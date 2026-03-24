@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Basic 3D Space</title>
+    <style>
+        @font-face {
+            font-family: 'Comic Sans Custom';
+            src: url('/ComicSansMS3.ttf') format('truetype');
+        }
+
+        /* Force Comic Sans EVERYWHERE with extreme prejudice */
+        * {
+            font-family: "Comic Sans Custom", "Comic Sans MS", "Comic Sans", "Chalkboard SE", "Comic Neue", cursive, sans-serif !important;
+        }
+
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: #000; 
+            cursor: url('/nothing.png'), auto; 
+        }
+        /* Ensure Comic Sans everywhere */
+        button, input, select, textarea, div, span, label, h1, h2, h3, h4, h5, h6, p, a {
+            font-family: "Comic Sans Custom", "Comic Sans MS", "Comic Sans", "Chalkboard SE", "Comic Neue", cursive, sans-serif !important;
+        }
+
+        #custom-cursor {
+            position: fixed;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 10000;
+        }
+        /* XP Window Styles */
+        .xp-window {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            background: #ECE9D8;
+            border: 1px solid #0055EA;
+            border-radius: 3px 3px 0 0;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.5);
+            z-index: 99999;
+            display: none; /* Hidden by default */
+            flex-direction: column;
+            pointer-events: auto;
+            font-family: "Comic Sans Custom", "Comic Sans MS", "Comic Sans", cursive, sans-serif !important;
+        }
+
+        /* Small "Work In Progress" badge for Studio modal */
+        .wip-badge {
+            display: inline-block;
+            background: #ff4444;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            margin-left: 10px;
+            box-shadow: 1px 1px 0 rgba(0,0,0,0.6);
+            -webkit-text-stroke: 0.5px #7a0000;
+        }
+        .xp-title-bar {
+            background: linear-gradient(to bottom, #0058EE 0%, #3593FF 4%, #288EFF 18%, #127DFF 20%, #0369FC 39%, #0262EE 41%, #0057E5 100%);
+            padding: 5px 10px;
+            color: white;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 3px 3px 0 0;
+            text-shadow: 1px 1px 0 #0f40ba;
+            font-size: 14px;
+        }
+        .xp-body {
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            color: black;
+            font-size: 14px;
+        }
+        .xp-button {
+            min-width: 80px;
+            padding: 4px 8px;
+            border: 1px solid #003c74;
+            border-radius: 3px;
+            cursor: pointer;
+            background: #f0f0f0;
+            color: black;
+            font-size: 12px;
+        }
+        .xp-button:hover {
+            background: #e0e0e0;
+        }
+        
+        #dev-menu {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+            gap: 5px;
+            pointer-events: auto;
+        }
+        #dev-menu button {
+            background: #444;
+            color: white;
+            border: 1px solid #666;
+            padding: 8px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        #dev-menu button:active { background: #666; }
+        .dev-info { font-size: 11px; margin-bottom: 5px; color: #ccc; }
+        
+        #chat-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 400px;
+            height: 250px;
+            display: none;
+            flex-direction: column;
+            z-index: 50;
+            pointer-events: none;
+        }
+        #chat-history {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+            background: transparent;
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            /* Classic Roblox Masking */
+            mask-image: linear-gradient(to bottom, transparent 0%, black 10%);
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%);
+        }
+        #chat-history::-webkit-scrollbar { display: none; }
+
+        #chat-input-row {
+            background: transparent;
+            padding: 5px;
+            pointer-events: auto;
+            opacity: 0; /* Hidden by default until hover/focus */
+            transition: opacity 0.2s;
+        }
+        #chat-container:hover #chat-input-row, #chat-input:focus {
+            opacity: 1;
+        }
+
+        #chat-input {
+            width: 100%;
+            box-sizing: border-box;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid #000;
+            border-radius: 0;
+            padding: 4px 6px;
+            font-size: 14px;
+            color: black;
+            outline: none;
+            box-shadow: 2px 2px 0px rgba(0,0,0,0.5);
+        }
+        #chat-input:focus { background: white; }
+        
+        .chat-msg {
+            font-size: 16px;
+            margin-bottom: 2px;
+            line-height: 1.2;
+        }
+        .chat-name {
+            font-weight: bold;
+            color: #fff;
+            margin-right: 2px;
+            text-shadow: 2px 2px 0 #000;
+        }
+        .chat-name::after {
+            content: ":";
+            margin-right: 4px;
+        }
+        .chat-text {
+            color: white;
+            word-wrap: break-word;
+            text-shadow: 2px 2px 0 #000;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            #chat-container {
+                width: 250px;
+                height: 150px;
+                top: 10px;
+                left: 10px;
+            }
+            .chat-msg { font-size: 12px; }
+        }
+
+        /* Menus */
+        .menu-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: transparent;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            pointer-events: none;
+        }
+
+        /* Make specific overlayed app panels (marketplace, settings, studio, customize) interactive.
+           The generic .menu-overlay leaves pointer-events disabled to allow underlying controls
+           in some screen states, so we opt-in here for panels that must accept clicks. */
+        #marketplace-modal,
+        #mp-panel,
+        #settings-menu,
+        #studio-modal,
+        #customize-menu {
+            pointer-events: auto;
+        }
+
+        /* Start Menu specific */
+        #start-menu {
+            align-items: flex-start; /* Left align */
+            justify-content: center;
+            padding-left: 50px;
+        }
+
+        /* Customize Menu specific */
+        #customize-menu {
+            align-items: flex-start;
+            justify-content: center;
+            padding-left: 20px;
+        }
+        
+        /* The container for the customize sidebar */
+        .sidebar {
+            background: rgba(255, 255, 255, 0.3);
+            border: 1px solid red;
+            border-radius: 6px;
+            padding: 20px;
+            width: 320px;
+            height: 70vh;
+            overflow-y: auto;
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            color: black;
+        }
+
+        .menu-title {
+            font-size: 72px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: white;
+            -webkit-text-stroke: 1px red;
+            text-shadow: 2px 2px 0px #aa0000;
+            pointer-events: auto;
+        }
+
+        .menu-btn {
+            display: block;
+            width: 280px;
+            padding: 12px;
+            margin: 10px 0;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.6);
+            border: 1px solid red;
+            border-radius: 6px;
+            color: red;
+            text-align: left;
+            padding-left: 20px;
+            transition: transform 0.1s, background 0.1s;
+            pointer-events: auto;
+        }
+        .menu-btn:hover { background: rgba(255, 255, 255, 0.8); }
+        .menu-btn:active { background: rgba(255, 255, 255, 0.9); }
+
+        /* HUD Buttons */
+        .hud-btn {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 2000;
+            display: none;
+            background: rgba(255, 255, 255, 0.6);
+            color: red;
+            border: 1px solid red;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 16px;
+            pointer-events: auto;
+            transition: background 0.1s;
+        }
+        .hud-btn:hover {
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        /* Graphical Editor Styling */
+        .avatar-vis {
+            display: grid;
+            grid-template-areas:
+                ". head ."
+                "larm torso rarm"
+                "lleg . rleg";
+            gap: 5px;
+            width: 200px;
+            margin: 0 auto 20px auto;
+        }
+        
+        .av-part {
+            width: 60px;
+            height: 60px;
+            border: 1px solid #555;
+            border-radius: 8px;
+            cursor: pointer;
+            position: relative;
+            background: #ccc;
+        }
+        .av-part input[type=color] {
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+            position: absolute;
+            top: 0; left: 0;
+        }
+        
+        .av-head { grid-area: head; border-radius: 15px; }
+        .av-torso { grid-area: torso; height: 80px; }
+        .av-larm { grid-area: larm; height: 80px; }
+        .av-rarm { grid-area: rarm; height: 80px; }
+        .av-lleg { grid-area: lleg; height: 80px; }
+        .av-rleg { grid-area: rleg; height: 80px; }
+
+        .file-upload-btn {
+            position: relative;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid red;
+            border-radius: 8px;
+            color: red;
+            padding: 8px;
+            text-align: center;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+        .file-upload-btn input[type=file] {
+            position: absolute;
+            top: 0; right: 0; min-width: 100%; min-height: 100%;
+            font-size: 100px; text-align: right; filter: alpha(opacity=0); opacity: 0; outline: none; background: white; cursor: inherit; display: block;
+        }
+        
+        /* Scrollbar */
+        .sidebar::-webkit-scrollbar { width: 8px; }
+        .sidebar::-webkit-scrollbar-thumb { background: red; border-radius: 4px; }
+        .sidebar::-webkit-scrollbar-track { background: rgba(255,255,255,0.1); }
+
+        /* Generic Menu Popup */
+        .menu-popup {
+            background: rgba(255, 255, 255, 0.3);
+            border: 1px solid red;
+            border-radius: 6px;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start; /* Align contents left */
+            gap: 5px;
+            pointer-events: auto;
+            min-width: 320px;
+        }
+        
+        .settings-row {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            align-items: center;
+            margin-bottom: 15px;
+            font-weight: bold;
+            color: red;
+            font-size: 18px;
+        }
+
+        /* Property Grid */
+        #prop-table td { border: 1px solid #ccc; padding: 1px 4px; color: black; }
+        #prop-table tr:nth-child(even) { background: #f9f9f9; }
+        .prop-key { width: 40%; color: #333; font-weight: normal; }
+        .prop-val { width: 60%; background: white; }
+        .prop-val input {
+            width: 100%; border: none; background: transparent; font-family: inherit; font-size: inherit; margin: 0; padding: 0; outline: none;
+        }
+        .prop-val input:focus { background: #e0efff; }
+
+        /* Tree View */
+        .tree-item { cursor: default; padding: 1px 2px; white-space: nowrap; color: black; display: flex; align-items: center; gap: 4px; }
+        .tree-item:hover { background: #e0efff; border: 1px solid #99ccff; padding: 0 1px; }
+        .tree-selected { background: #3399ff !important; color: white !important; border: 1px solid #3399ff !important; padding: 0 1px; }
+        input[type=range] {
+            accent-color: red;
+        }
+
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://esm.sh/three@0.160.0",
+                "three/addons/": "https://esm.sh/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="xp-modal" class="xp-window">
+        <div class="xp-title-bar">
+            <span>BRICKs</span>
+            <span style="background: #da3610; border: 1px solid white; border-radius: 3px; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 10px; cursor: pointer;">X</span>
+        </div>
+        <div class="xp-body">
+            <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
+                <div style="width: 32px; height: 32px; background: red; border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 20px; border: 2px solid white; box-shadow: 1px 1px 3px rgba(0,0,0,0.3);">X</div>
+                <div style="text-align: left; flex: 1;">BRICKs is not supported on mobile.</div>
+            </div>
+            <button id="xp-ok-btn" class="xp-button">OK</button>
+        </div>
+    </div>
+
+    <div id="win-explorer" class="xp-window" style="top: 250px; left: 150px; width: 200px; height: 350px; display: none; padding: 0; flex-direction: column;">
+        <div class="xp-title-bar">
+            <span>Explorer</span>
+            <span class="win-close" style="background: #da3610; border: 1px solid white; border-radius: 3px; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 10px; cursor: pointer;" onclick="document.getElementById('win-explorer').style.display='none'">X</span>
+        </div>
+        <div style="background: white; flex: 1; overflow-y: auto; padding: 4px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 12px; text-align: left; border: 1px solid #888; margin: 2px;">
+            <div id="explorer-content"></div>
+        </div>
+    </div>
+
+    <div id="win-properties" class="xp-window" style="top: 250px; left: 360px; width: 220px; height: 350px; display: none; padding: 0; flex-direction: column;">
+        <div class="xp-title-bar">
+            <span>Properties</span>
+            <span class="win-close" style="background: #da3610; border: 1px solid white; border-radius: 3px; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 10px; cursor: pointer;" onclick="document.getElementById('win-properties').style.display='none'">X</span>
+        </div>
+        <div style="background: #eee; flex: 1; overflow-y: auto; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 11px; border: 1px solid #888; margin: 2px;">
+            <table id="prop-table" style="width: 100%; border-collapse: collapse;">
+                <tbody id="prop-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="start-menu" class="menu-overlay">
+        <div class="menu-popup">
+            <div class="menu-title" style="font-size: 64px;">BRICKs</div>
+            <button id="btn-play" class="menu-btn">PLAY</button>
+            <button id="btn-customize" class="menu-btn">MARKETPLACE</button>
+            <button id="btn-settings" class="menu-btn">SETTINGS</button>
+            <button id="btn-studio" class="menu-btn">STUDIO</button>
+        </div>
+    </div>
+
+    <!-- Servers Modal -->
+    <div id="server-modal" class="menu-overlay" style="display:none; justify-content:center; align-items:center;">
+        <div class="menu-popup" style="min-width:420px; max-width:90%;">
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                <h3 style="margin:0; color:white; -webkit-text-stroke:1px red;">SERVERS</h3>
+                <button id="server-close" class="menu-btn" style="width:64px;">Close</button>
+            </div>
+            <div style="display:flex; gap:12px; margin-top:12px;">
+                <div style="width:260px; display:flex; flex-direction:column; gap:8px;">
+                    <input id="srv-name" placeholder="Server name (required)" style="padding:8px; background:rgba(255,255,255,0.02); color:white; border:1px solid rgba(255,255,255,0.05);">
+                    <input id="srv-thumb" type="file" accept="image/*">
+                    <select id="srv-map" style="height:36px; background:rgba(255,255,255,0.04); color:white; border:1px solid rgba(255,255,255,0.06); padding:4px;">
+                        <option value="platform">Platform (default)</option>
+                        <option value="obby">Obby</option>
+                        <option value="space">Space</option>
+                    </select>
+                    <div style="display:flex; gap:8px;">
+                        <button id="srv-host" class="menu-btn" style="flex:1; background:rgba(0,255,0,0.08); color:#00cc44;">Host</button>
+                        <button id="srv-refresh" class="menu-btn" style="flex:1;">Refresh</button>
+                    </div>
+                    <div style="color:#aaa; font-size:12px;">Servers are local to this browser (no server backend).</div>
+                </div>
+                <div style="flex:1; max-height:320px; overflow:auto;">
+                    <div id="srv-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button id="btn-exit-game" class="hud-btn">LEAVE GAME</button>
+
+    <div id="settings-menu" class="menu-overlay" style="display: none; justify-content: center; align-items: center;">
+        <div class="menu-popup" style="align-items: center; width: 400px;">
+            <h2 style="color: red; margin-top: 0; font-size: 32px; -webkit-text-stroke: 1px red; text-shadow: 2px 2px 0px #aa0000; color: white;">SETTINGS</h2>
+            
+            <div class="settings-row">
+                <label>Music Volume</label>
+                <input type="range" id="set-volume" min="0" max="100" value="60">
+            </div>
+            
+            <div class="settings-row">
+                <label>Camera Sensitivity</label>
+                <input type="range" id="set-sens" min="10" max="200" value="100">
+            </div>
+
+            <!-- Username setting -->
+            <div class="settings-row" style="flex-direction:column; align-items:flex-start; gap:6px;">
+                <label style="margin-bottom:6px; color:red; font-weight:bold;">Username</label>
+                <input id="set-username" type="text" placeholder="Enter username" style="width:100%; padding:6px; background:rgba(255,255,255,0.02); color:white; border:1px solid rgba(255,255,255,0.05);">
+            </div>
+
+            <button id="btn-settings-back" class="menu-btn" style="text-align: center;">BACK</button>
+        </div>
+    </div>
+
+    <div id="customize-menu" class="menu-overlay" style="display: none;">
+        <div class="sidebar">
+            <h2 style="margin-top:0; color:white; font-size:32px; -webkit-text-stroke: 1px red; text-shadow: 2px 2px 0px #aa0000;">Customize</h2>
+            
+            <label style="color:red; font-weight:bold; display:block; text-align:center;">Body Colors</label>
+            <div class="avatar-vis">
+                <div class="av-part av-head" style="background-color: #F2F3F3;"><input type="color" id="col-head" value="#F2F3F3"></div>
+                <div class="av-part av-larm" style="background-color: #F2F3F3;"><input type="color" id="col-larm" value="#F2F3F3"></div>
+                <div class="av-part av-torso" style="background-color: #808080;"><input type="color" id="col-torso" value="#808080"></div>
+                <div class="av-part av-rarm" style="background-color: #F2F3F3;"><input type="color" id="col-rarm" value="#F2F3F3"></div>
+                <div class="av-part av-lleg" style="background-color: #808080;"><input type="color" id="col-lleg" value="#808080"></div>
+                <div class="av-part av-rleg" style="background-color: #808080;"><input type="color" id="col-rleg" value="#808080"></div>
+            </div>
+
+            <label style="color:red; font-weight:bold; display:block; margin-top:10px;">Clothing</label>
+            
+            <div style="margin-bottom: 10px;">
+                <label>Face</label>
+                <div class="file-upload-btn">
+                    Choose Face Image...
+                    <input type="file" id="file-face" accept="image/*">
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 10px;">
+                <label>Shirt</label>
+                <div class="file-upload-btn">
+                    Choose Shirt Image...
+                    <input type="file" id="file-shirt" accept="image/*">
+                </div>
+            </div>
+
+            <button id="btn-cust-done" class="menu-btn" style="background: transparent; border-color: #00aa00; color: #006600; margin-top: auto;">DONE</button>
+        </div>
+    </div>
+
+    <div id="marketplace-modal" class="menu-overlay" style="display:none; justify-content:flex-start; align-items:flex-start; padding:24px;">
+        <!-- Fullscreen pane -->
+        <div id="mp-panel" style="background: rgba(10,10,10,0.95); width: calc(100% - 48px); height: calc(100% - 48px); border-radius:8px; padding:18px; overflow:hidden; box-sizing:border-box; display:flex; flex-direction:column; gap:12px;">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <h2 style="margin:0; color:white; -webkit-text-stroke: 1px red;">MARKETPLACE</h2>
+                    <div id="mp-tabs" style="display:flex; gap:8px;">
+                        <button class="menu-btn mp-tab" data-tab="community">Community</button>
+                        <button class="menu-btn mp-tab" data-tab="admin">Admins</button>
+                        <button class="menu-btn mp-tab" data-tab="yours">Yours</button>
+                    </div>
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <select id="mp-filter" style="height:36px; background:rgba(255,255,255,0.06); color:white; border:1px solid rgba(255,255,255,0.08); padding:4px;">
+                        <option value="all">All Types</option>
+                        <option value="face">Face</option>
+                        <option value="shirt">Shirt</option>
+                    </select>
+                    <button id="mp-close" class="menu-btn">Close</button>
+                </div>
+            </div>
+
+            <div style="display:flex; gap:12px; align-items:flex-start; flex:1; min-height:0;">
+                <!-- Left: Upload / Info -->
+                <div style="width:320px; background:rgba(255,255,255,0.03); border-radius:6px; padding:12px; box-sizing:border-box; display:flex; flex-direction:column; gap:10px;">
+                    <div style="font-size:14px; color:#ddd;">Upload Asset</div>
+                    <input id="mp-file" type="file" accept="image/*">
+                    <select id="mp-type" style="height:36px; background:rgba(255,255,255,0.04); color:white; border:1px solid rgba(255,255,255,0.06); padding:4px;">
+                        <option value="face">Face Image</option>
+                        <option value="shirt">Shirt Image</option>
+                    </select>
+                    <input id="mp-name" placeholder="Asset name (optional)" style="padding:6px; background:rgba(255,255,255,0.02); color:white; border:1px solid rgba(255,255,255,0.05);">
+                    <select id="mp-visibility" style="height:36px; background:rgba(255,255,255,0.04); color:white; border:1px solid rgba(255,255,255,0.06); padding:4px;">
+                        <option value="public">Public</option>
+                        <option value="private">Private</option>
+                    </select>
+                    <div style="display:flex; gap:8px;">
+                        <button id="mp-upload" class="menu-btn" style="flex:1; background:rgba(0,255,0,0.08); color:#00cc44;">Upload</button>
+                        <button id="mp-clear" class="menu-btn" style="flex:1;">Clear</button>
+                    </div>
+                    <div style="margin-top:auto; font-size:12px; color:#aaa;">Uploads are stored locally for this session (no server).</div>
+                </div>
+
+                <!-- Right: Asset Grid -->
+                <div style="flex:1; min-height:0; display:flex; flex-direction:column; gap:8px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div id="mp-count" style="color:#ddd; font-size:13px;">0 assets</div>
+                        <div>
+                            <button id="mp-refresh" class="menu-btn" style="margin-right:8px;">Refresh</button>
+                            <button id="mp-done" class="menu-btn">Done</button>
+                        </div>
+                    </div>
+                    <div id="mp-list" style="background:rgba(255,255,255,0.02); border-radius:6px; padding:12px; overflow:auto; display:grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap:12px; min-height:0;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Studio Confirmation Modal (added to prevent UI hiding/freezing when opening Studio) -->
+    <div id="studio-modal" class="menu-overlay" style="display:none; justify-content:center; align-items:center;">
+        <div class="menu-popup" style="min-width:320px; max-width:90%; align-items:flex-start;">
+            <div style="display:flex; width:100%; justify-content:space-between; align-items:center;">
+                <div style="display:flex; align-items:center;">
+                    <h3 style="margin:0; color:white; -webkit-text-stroke: 1px red;">STUDIO</h3>
+                    <span class="wip-badge" title="Work in progress">WIP</span>
+                </div>
+                <button id="studio-close" class="menu-btn" style="width:48px; height:32px; padding:4px;">X</button>
+            </div>
+            <p style="color:#ff3333; margin:6px 0 12px 0; font-size:14px;">Open Studio? Confirm will be implemented later.</p>
+            <div style="display:flex; gap:12px; width:100%; margin-top:6px; justify-content:center;">
+                <button id="studio-confirm" class="menu-btn" style="background:rgba(0,255,0,0.08); color:#006600; border-color:#00aa00; padding:8px 14px;">Confirm</button>
+                <button id="studio-decline" class="menu-btn" style="background:rgba(255,255,255,0.08); padding:8px 14px;">Decline</button>
+            </div>
+        </div>
+    </div>
+
+    <img id="custom-cursor" src="/ArrowFarCursor.png">
+    
+    <!-- Studio Top UI: appears in STUDIO mode; simple Test toggle with placeholder icon -->
+    <div id="studio-top-ui" style="position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:3000; pointer-events:auto; display:none;">
+        <button id="studio-test-btn" class="hud-btn" style="display:flex; align-items:center; gap:8px; padding:8px 12px; font-size:16px;">
+            <img src="/trollface (2).png" alt="icon" style="width:20px;height:20px;object-fit:contain;opacity:0.9;">
+            <span id="studio-test-label">Test</span>
+        </button>
+    </div>
+
+    <div id="chat-container">
+        <div id="chat-history">
+        </div>
+        <div id="chat-input-row">
+            <input id="chat-input" type="text" placeholder="Press '/' to chat" maxlength="128">
+        </div>
+    </div>
+
+    <div id="dev-stats" style="display:none; position:fixed; top:60px; left:20px; background:rgba(0,0,0,0.6); color:#cccccc; font-family:'Courier New', monospace; font-size:11px; padding:8px; pointer-events:none; z-index:100000; border-left: 2px solid rgba(255,50,50,0.5); width: 160px;">
+        <div style="font-weight:bold; color: #ff5555; margin-bottom:5px; text-shadow: 1px 1px 0 #000; border-bottom: 1px solid #555; padding-bottom: 2px;">PERFORMANCE STATS</div>
+        <div id="stat-fps" style="color:#00ff00;">FPS: --</div>
+        <div id="stat-frame">CPU: -- ms</div>
+        <div id="stat-render">GPU: -- ms</div>
+        <div id="stat-mem" style="color:#ffff00;">Mem: -- MB</div>
+        <div id="stat-tri">Tris: --</div>
+        <div id="stat-inst">Instances: --</div>
+        <div id="stat-net" style="color:#00ccff;">Net (Recv): -- KB/s</div>
+        <div id="stat-ping">Ping: -- ms</div>
+        <div style="margin-top:5px; color:#666; font-size: 9px; border-top:1px solid #333; padding-top:2px;">Build: 2008.05.12.02-release</div>
+    </div>
+
+
+
+    <div id="cmd-console" style="display:none; position:fixed; bottom:0; left:0; width:100%; z-index:999999; pointer-events: none;">
+        <div id="cmd-history" style="max-height:50vh; overflow-y:auto; padding:5px 10px; font-family:monospace; font-size:12px; color:#ccc; text-shadow:1px 1px 0 #000; pointer-events:auto; display:flex; flex-direction:column; background:transparent;"></div>
+        <div style="background:#1a1a1a; border-top:1px solid #333; padding:4px 8px; box-sizing:border-box; width:100%; display:flex; align-items:center; pointer-events:auto;">
+            <span style="color:#888; font-family:monospace; font-size:12px; margin-right:4px;">&gt;</span>
+            <input id="cmd-input" type="text" style="background:transparent; border:none; color:#ddd; font-family:monospace; font-size:12px; flex:1; outline:none;" spellcheck="false" autocomplete="off">
+        </div>
+    </div>
+    <script type="module" src="./src/main.js"></script>
+    <script>
+        // Helper to update visual color blocks
+        const ids = ['col-head', 'col-torso', 'col-larm', 'col-rarm', 'col-lleg', 'col-rleg'];
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            if(el) {
+                el.addEventListener('input', (e) => {
+                    el.parentElement.style.backgroundColor = e.target.value;
+                });
+            }
+        });
+    </script>
+</body>
+</html>
