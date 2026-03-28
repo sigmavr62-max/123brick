@@ -1,15 +1,34 @@
-let currentText = "No Data";
+let lastData = null;
 
-export default function handler(req, res) {
-  // Allow Roblox to bypass CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  
-  if (req.method === 'POST') {
-    // When your Typewriter Menu sends text
-    currentText = req.body.text || "Empty";
-    return res.status(200).json({ success: true });
-  } else {
-    // When Build Logic HTTP Transmitter fetches text
-    return res.status(200).send(currentText);
-  }
+// The "Turbo-Poll" Loop
+async function fastUpdate() {
+    try {
+        const res = await fetch('/api', { cache: 'no-store' }); // bypass cache
+        if (res.ok) {
+            const data = await res.text();
+            if (data !== lastData) {
+                lastData = data;
+                document.getElementById('display').innerText = data;
+            }
+        }
+    } catch (err) {
+        // Silently ignore errors (including 404s) as requested
+    }
 }
+
+// Function to push new text to the Vercel API
+async function sendData() {
+    const text = document.getElementById('textInput').value;
+    try {
+        await fetch('/api', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: text })
+        });
+    } catch (err) {
+        // Silent error
+    }
+}
+
+// Run the update check at "Max FPS" (approx every 16ms/60fps)
+setInterval(fastUpdate, 16);
